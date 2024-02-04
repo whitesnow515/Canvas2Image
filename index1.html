@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        #carPlateForm {
+            margin: auto;
+            margin-top: 300px;
+            width: 50%;
+            padding: 10px;
+        }
+        body {
+            font-size: 50px;
+            background-image: url('background.png');
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        [lang=ar] {
+            direction: rtl;
+        }
+
+    </style>
+</head>
+<body>
+    <script>
+
+        function convertToArabic(englishLetter) {
+            var arabicLetters = {
+                                    'a': 'ا',
+                                    'b': 'ب',
+                                    't': 'ت',
+                                    'th': 'ث',
+                                    'g': 'ج',
+                                    'h': 'ه',
+                                    'kh': 'خ',
+                                    'd': 'د',
+                                    'dh': 'ذ',
+                                    'r': 'ر',
+                                    'z': 'ز',
+                                    'sh': 'ش',
+                                    's': 'س',
+                                    'gh': 'غ',
+                                    'f': 'ف',
+                                    'k': 'ك',
+                                    'l': 'ل',
+                                    'm': 'م',
+                                    'n': 'ن',
+                                    'w': 'و',
+                                    'y': 'ي',
+                                };
+            let result = '';
+            for (let i = 0; i < englishLetter.length; i++) {
+                var letter = englishLetter[i];
+                if (!isLowerCase(letter)) {
+                    letter = letter.toLowerCase();
+                }
+                result += arabicLetters[letter];
+            }
+            return result;
+        }
+
+        function isLowerCase(char) {
+            return char === char.toLowerCase();
+        }
+    
+        console.log(convertToArabic('HELLO'));
+
+        function arabicToEasternArabic(num) {
+            const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            return num.toString().split('').map(digit => arabicNumerals[digit]).join('');
+        }
+
+        console.log(arabicToEasternArabic(123));
+
+    </script>
+</body>
+</html>

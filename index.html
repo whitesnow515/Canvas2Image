@@ -1,0 +1,629 @@
+<!doctype html>
+<html>
+<meta charset="utf-8" />
+<script src="./canvas2image.js"></script>
+<style>
+    .doc {
+        width: 604px;
+        margin: 0 auto;
+    }
+    body {
+        color: azure;
+    }
+    canvas {
+        margin-top: 100px;
+        display: block;
+        border: 2px solid #888;
+        border-radius: 2%;
+    }
+</style>
+<body>
+<div class="doc">
+    <canvas width="650" height="650" id="cvs"></canvas>
+    <div>
+        <p>
+            <button id="save">save</button> or <button id="convert">convert to</button> as: 
+            <select id="sel">
+                <option value="png">png</option>
+                <option value="jpeg">jpeg</option>
+                <option value="bmp">bmp</option>
+            </select><br/>
+            <form id="carPlateForm">
+                <input type="text" id="plateLetter1" maxlength="4" placeholder="Number"><br>
+                <input type="text" id="plateLetter2" maxlength="3" placeholder="Letter"><br>
+                <button type="submit">Generate Plate</button>
+            </form>
+        </p>
+
+    </div>
+    <input type="file" id="fileInput" />
+    <div id="imgs">
+        
+    </div>
+</div>
+<script>
+    var reader = null;
+    var file = null;
+    // Assume 'fileInput' is an input element of type 'file'
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+    file = e.target.files[0];
+    reader = new FileReader();
+
+    reader.onload = function(e) {
+        let img = new Image();
+        img.onload = function() {
+            let canvas = document.getElementById('cvs');
+            let ctx = canvas.getContext('2d');
+            
+            // Resize the canvas to match the image dimensions
+
+            // Draw the image onto the canvas
+            ctx.drawImage(img, 27, 170, 600, 300);
+        };
+        
+        // Set the image source to our data URL
+        img.src = e.target.result;
+    };
+
+    // read the image file as a data URL
+    reader.readAsDataURL(file);
+});
+
+    var canvas, ctx, bMouseIsDown = false, iLastX, iLastY,
+        $save, $imgs,
+        $convert, $imgW, $imgH,
+        $sel;
+        const Canvas2Image = (function () {
+    // check if support sth.
+    const $support = (function () {
+        const canvas = document.createElement("canvas"),
+            ctx = canvas.getContext("2d");
+
+        return {
+            canvas: !!ctx,
+            imageData: !!ctx.getImageData,
+            dataURL: !!canvas.toDataURL,
+            btoa: !!window.btoa,
+        };
+    })();
+
+    const downloadMime = "image/octet-stream";
+
+    function scaleCanvas(canvas, width, height) {
+        const w = canvas.width,
+            h = canvas.height;
+        if (width === undefined) {
+            width = w;
+        }
+        if (height === undefined) {
+            height = h;
+        }
+
+        let retCanvas = document.createElement("canvas");
+        let retCtx = retCanvas.getContext("2d");
+        retCanvas.width = width;
+        retCanvas.height = height;
+        retCtx.drawImage(canvas, 0, 0, w, h, 0, 0, width, height);
+        return retCanvas;
+    }
+
+    function getDataURL(canvas, type, width, height) {
+        canvas = scaleCanvas(canvas, width, height);
+        return canvas.toDataURL(type);
+    }
+
+    // save file to local with file name and file type
+    function saveFile(strData, fileType, fileName = "name") {
+        // document.location.href = strData;
+        let saveLink = document.createElement("a");
+        // download file name
+        saveLink.download = fileName + "." + fileType;
+        // download file data
+        saveLink.href = strData;
+        // start download
+        saveLink.click();
+    }
+
+    function genImage(strData) {
+        let img = document.createElement("img");
+        img.src = strData;
+        return img;
+    }
+
+    function fixType(type) {
+        type = type.toLowerCase().replace(/jpg/i, "jpeg");
+        const r = type.match(/png|jpeg|bmp|gif/)[0];
+        return "image/" + r;
+    }
+
+    function encodeData(data) {
+        if (!window.btoa) {
+            // eslint-disable-next-line no-throw-literal
+            throw "btoa undefined";
+        }
+        let str = "";
+        if (typeof data == "string") {
+            str = data;
+        } else {
+            for (let i = 0; i < data.length; i++) {
+                str += String.fromCharCode(data[i]);
+            }
+        }
+
+        return btoa(str);
+    }
+
+    function getImageData(canvas) {
+        const w = canvas.width,
+            h = canvas.height;
+        return canvas.getContext("2d").getImageData(0, 0, w, h);
+    }
+
+    function makeURI(strData, type) {
+        return "data:" + type + ";base64," + strData;
+    }
+
+    /**
+     * create bitmap image
+     * 按照规则生成图片响应头和响应体
+     */
+    const genBitmapImage = function (oData) {
+        //
+        // BITMAPFILEHEADER: http://msdn.microsoft.com/en-us/library/windows/desktop/dd183374(v=vs.85).aspx
+        // BITMAPINFOHEADER: http://msdn.microsoft.com/en-us/library/dd183376.aspx
+        //
+
+        const biWidth = oData.width;
+        const biHeight = oData.height;
+        const biSizeImage = biWidth * biHeight * 3;
+        const bfSize = biSizeImage + 54; // total header size = 54 bytes
+
+        //
+        //  typedef struct tagBITMAPFILEHEADER {
+        //  	WORD bfType;
+        //  	DWORD bfSize;
+        //  	WORD bfReserved1;
+        //  	WORD bfReserved2;
+        //  	DWORD bfOffBits;
+        //  } BITMAPFILEHEADER;
+        //
+        const BITMAPFILEHEADER = [
+            // WORD bfType -- The file type signature; must be "BM"
+            0x42,
+            0x4d,
+            // DWORD bfSize -- The size, in bytes, of the bitmap file
+            bfSize & 0xff,
+            (bfSize >> 8) & 0xff,
+            (bfSize >> 16) & 0xff,
+            (bfSize >> 24) & 0xff,
+            // WORD bfReserved1 -- Reserved; must be zero
+            0,
+            0,
+            // WORD bfReserved2 -- Reserved; must be zero
+            0,
+            0,
+            // DWORD bfOffBits -- The offset, in bytes, from the beginning of the BITMAPFILEHEADER structure to the bitmap bits.
+            54,
+            0,
+            0,
+            0,
+        ];
+
+        //
+        //  typedef struct tagBITMAPINFOHEADER {
+        //  	DWORD biSize;
+        //  	LONG  biWidth;
+        //  	LONG  biHeight;
+        //  	WORD  biPlanes;
+        //  	WORD  biBitCount;
+        //  	DWORD biCompression;
+        //  	DWORD biSizeImage;
+        //  	LONG  biXPelsPerMeter;
+        //  	LONG  biYPelsPerMeter;
+        //  	DWORD biClrUsed;
+        //  	DWORD biClrImportant;
+        //  } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
+        //
+        const BITMAPINFOHEADER = [
+            // DWORD biSize -- The number of bytes required by the structure
+            40,
+            0,
+            0,
+            0,
+            // LONG biWidth -- The width of the bitmap, in pixels
+            biWidth & 0xff,
+            (biWidth >> 8) & 0xff,
+            (biWidth >> 16) & 0xff,
+            (biWidth >> 24) & 0xff,
+            // LONG biHeight -- The height of the bitmap, in pixels
+            biHeight & 0xff,
+            (biHeight >> 8) & 0xff,
+            (biHeight >> 16) & 0xff,
+            (biHeight >> 24) & 0xff,
+            // WORD biPlanes -- The number of planes for the target device. This value must be set to 1
+            1,
+            0,
+            // WORD biBitCount -- The number of bits-per-pixel, 24 bits-per-pixel -- the bitmap
+            // has a maximum of 2^24 colors (16777216, Truecolor)
+            24,
+            0,
+            // DWORD biCompression -- The type of compression, BI_RGB (code 0) -- uncompressed
+            0,
+            0,
+            0,
+            0,
+            // DWORD biSizeImage -- The size, in bytes, of the image. This may be set to zero for BI_RGB bitmaps
+            biSizeImage & 0xff,
+            (biSizeImage >> 8) & 0xff,
+            (biSizeImage >> 16) & 0xff,
+            (biSizeImage >> 24) & 0xff,
+            // LONG biXPelsPerMeter, unused
+            0,
+            0,
+            0,
+            0,
+            // LONG biYPelsPerMeter, unused
+            0,
+            0,
+            0,
+            0,
+            // DWORD biClrUsed, the number of color indexes of palette, unused
+            0,
+            0,
+            0,
+            0,
+            // DWORD biClrImportant, unused
+            0,
+            0,
+            0,
+            0,
+        ];
+
+        const iPadding = (4 - ((biWidth * 3) % 4)) % 4;
+
+        const aImgData = oData.data;
+
+        let strPixelData = "";
+        const biWidth4 = biWidth << 2;
+        let y = biHeight;
+        const fromCharCode = String.fromCharCode;
+
+        do {
+            const iOffsetY = biWidth4 * (y - 1);
+            let strPixelRow = "";
+            for (let x = 0; x < biWidth; x++) {
+                const iOffsetX = x << 2;
+                strPixelRow +=
+                    fromCharCode(aImgData[iOffsetY + iOffsetX + 2]) +
+                    fromCharCode(aImgData[iOffsetY + iOffsetX + 1]) +
+                    fromCharCode(aImgData[iOffsetY + iOffsetX]);
+            }
+
+            for (let c = 0; c < iPadding; c++) {
+                strPixelRow += String.fromCharCode(0);
+            }
+
+            strPixelData += strPixelRow;
+        } while (--y);
+
+        return (
+            encodeData(BITMAPFILEHEADER.concat(BITMAPINFOHEADER)) +
+            encodeData(strPixelData)
+        );
+    };
+
+    /**
+     * saveAsImage
+     * @param canvas canvasElement
+     * @param width {String} image type
+     * @param height {Number} [optional] png width
+     * @param type {string} [optional] png height
+     * @param fileName {String} image name
+     */
+    const saveAsImage = function (canvas, width, height, type, fileName) {
+        // save file type
+        const fileType = type;
+        if ($support.canvas && $support.dataURL) {
+            if (typeof canvas == "string") {
+                canvas = document.getElementById(canvas);
+            }
+            if (type === undefined) {
+                type = "png";
+            }
+            type = fixType(type);
+            if (/bmp/.test(type)) {
+                const data = getImageData(scaleCanvas(canvas, width, height));
+                const strData = genBitmapImage(data);
+                // use new parameter: fileType
+                saveFile(makeURI(strData, downloadMime), fileType, fileName);
+            } else {
+                const strData = getDataURL(canvas, type, width, height);
+                // use new parameter: fileType
+                saveFile(strData.replace(type, downloadMime), fileType, fileName);
+            }
+        }
+    };
+
+    const convertToImage = function (canvas, width, height, type) {
+        if ($support.canvas && $support.dataURL) {
+            if (typeof canvas == "string") {
+                canvas = document.getElementById(canvas);
+            }
+            if (type === undefined) {
+                type = "png";
+            }
+            type = fixType(type);
+
+            if (/bmp/.test(type)) {
+                const data = getImageData(scaleCanvas(canvas, width, height));
+                const strData = genBitmapImage(data);
+                return genImage(makeURI(strData, "image/bmp"));
+            } else {
+                const strData = getDataURL(canvas, type, width, height);
+                return genImage(strData);
+            }
+        }
+    };
+
+    return {
+        saveAsImage: saveAsImage,
+        saveAsPNG: function (canvas, width, height, fileName) {
+            return saveAsImage(canvas, width, height, "png", fileName);
+        },
+        saveAsJPEG: function (canvas, width, height, fileName) {
+            return saveAsImage(canvas, width, height, "jpeg", fileName);
+        },
+        saveAsGIF: function (canvas, width, height, fileName) {
+            return saveAsImage(canvas, width, height, "gif", fileName);
+        },
+        saveAsBMP: function (canvas, width, height, fileName) {
+            return saveAsImage(canvas, width, height, "bmp", fileName);
+        },
+
+        convertToImage: convertToImage,
+        convertToPNG: function (canvas, width, height) {
+            return convertToImage(canvas, width, height, "png");
+        },
+        convertToJPEG: function (canvas, width, height) {
+            return convertToImage(canvas, width, height, "jpeg");
+        },
+        convertToGIF: function (canvas, width, height) {
+            return convertToImage(canvas, width, height, "gif");
+        },
+        convertToBMP: function (canvas, width, height) {
+            return convertToImage(canvas, width, height, "bmp");
+        },
+    };
+})();
+    function init () {
+        canvas = document.getElementById('cvs');
+        ctx = canvas.getContext('2d');
+        $save = document.getElementById('save');
+        $convert = document.getElementById('convert');
+        $sel = document.getElementById('sel');
+        $imgs = document.getElementById('imgs');
+        $imgW = document.getElementById('imgW');
+        $imgH = document.getElementById('imgH');
+        bind();
+        draw();
+    }
+    function bind () {
+        canvas.onmousedown = function(e) {
+            bMouseIsDown = true;
+            iLastX = e.clientX - canvas.offsetLeft + (window.pageXOffset||document.body.scrollLeft||document.documentElement.scrollLeft);
+            iLastY = e.clientY - canvas.offsetTop + (window.pageYOffset||document.body.scrollTop||document.documentElement.scrollTop);
+        }
+        canvas.onmouseup = function() {
+            bMouseIsDown = false;
+            iLastX = -1;
+            iLastY = -1;
+        }
+        canvas.onmousemove = function(e) {
+            if (bMouseIsDown) {
+                var iX = e.clientX - canvas.offsetLeft + (window.pageXOffset||document.body.scrollLeft||document.documentElement.scrollLeft);
+                var iY = e.clientY - canvas.offsetTop + (window.pageYOffset||document.body.scrollTop||document.documentElement.scrollTop);
+                ctx.moveTo(iLastX, iLastY);
+                ctx.lineTo(iX, iY);
+                ctx.stroke();
+                iLastX = iX;
+                iLastY = iY;
+            }
+        };
+        
+        $save.onclick = function (e) {
+            var type = $sel.value,
+                w = $imgW.value,
+                h = $imgH.value;
+            Canvas2Image.saveAsImage(canvas, w, h, type);
+        }
+        $convert.onclick = function (e) {
+            var type = $sel.value,
+                w = $imgW.value,
+                h = $imgH.value;
+            $imgs.appendChild(Canvas2Image.convertToImage(canvas, w, h, type))
+        }
+        
+    }
+    function draw () {
+
+        ctx.fillStyle = '#e6e4e4';
+        ctx.fillRect(0, 0, 800, 800);
+    }
+    document.getElementById('carPlateForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+        //     reader.onload = function(e) {
+        //     let img = new Image();
+        //     console.log(file);
+        //     img.onload = function() {
+        //         let canvas = document.getElementById('cvs');
+        //         let ctx = canvas.getContext('2d');
+                
+        //         // Resize the canvas to match the image dimensions
+        //         canvas.width = img.width;
+        //         canvas.height = img.height;
+
+        //         // Draw the image onto the canvas
+        //         ctx.drawImage(img, 0, 0, img.width, img.height);
+        //     };
+            
+        //     // Set the image source to our data URL
+        //     img.src = e.target.result;
+        // };
+
+        // read the image file as a data URL
+        // reader.readAsDataURL(file);
+            
+            // Get the values from the input fields
+            var letter1 = document.getElementById('plateLetter1').value;
+            var letter2 = document.getElementById('plateLetter2').value;
+
+            // Convert the English letters to Arabic
+            var arabicLetter3 = arabicToEasternArabic(letter1);
+            var arabicLetter4 = convertToArabic(letter2);
+            var arabicLetter1 = convertSpace(letter1);
+            var arabicLetter2 = convertSpace(letter2);
+            console.log(arabicLetter1);
+
+            // Draw the car plate image onto the canvas
+            var canvas = document.getElementById("cvs");
+            var ctx = canvas.getContext('2d');
+            // ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+            ctx.font = '65px Arial';
+            ctx.fillStyle = 'black'; // Set the text color
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            var boxWidth = 700;
+            var boxHeight = 800;
+            console.log(boxHeight, boxWidth);
+
+            var offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = canvas.width;
+            offscreenCanvas.height = canvas.height;
+            var offscreenCtx = offscreenCanvas.getContext('2d');
+            offscreenCtx.font = '65px Arial';
+            offscreenCtx.fillText(arabicLetter1, 0, 30);
+
+            // Measure the width of the rendered Arabic text
+            var arabicWidth = offscreenCtx.measureText(arabicLetter1).width;
+
+            // Adjust the font size of the Arabic text until it matches the width of the English text
+            while (arabicWidth > ctx.measureText(arabicLetter1).width) {
+                offscreenCtx.font = parseInt(offscreenCtx.font) - 1 + 'px Arial';
+                offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+                offscreenCtx.fillText(arabicLetter1, 0, 30);
+                arabicWidth = offscreenCtx.measureText(arabicLetter1).width;
+            }
+
+            // Now you can draw the Arabic text onto the visible canvas
+            ctx.font = offscreenCtx.font;
+            console.log(ctx.font);
+            ctx.fillText(arabicLetter3, boxWidth / 4, boxHeight * 0.33);
+//
+
+            var offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = canvas.width;
+            offscreenCanvas.height = canvas.height;
+            var offscreenCtx = offscreenCanvas.getContext('2d');
+            offscreenCtx.font = '65px Arial';
+            offscreenCtx.fillText(arabicLetter3, 0, 30);
+
+            var arabicWidth = offscreenCtx.measureText(arabicLetter2).width;
+
+            // Adjust the font size of the Arabic text until it matches the width of the English text
+            while (arabicWidth > ctx.measureText(arabicLetter3).width) {
+                offscreenCtx.font = parseInt(offscreenCtx.font) - 1 + 'px Arial';
+                offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+                offscreenCtx.fillText(arabicLetter2, 0, 30);
+                arabicWidth = offscreenCtx.measureText(arabicLetter2).width;
+            }
+
+            // Now you can draw the Arabic text onto the visible canvas
+            ctx.font = offscreenCtx.font;
+            console.log(ctx.font);
+            ctx.fillText(arabicLetter4, boxWidth * 0.62, boxHeight * 0.32);
+
+            ctx.fillText(arabicLetter1, boxWidth / 4, boxHeight * 0.5);
+
+            ctx.fillText(arabicLetter2.toUpperCase(), boxWidth * 0.62, boxHeight * 0.5);
+
+            
+            var canvas = ctx.canvas;
+            window.t = canvas;
+            var imgData = canvas.toDataURL("image/png;base64");
+
+            // Create a link element
+            var link = document.createElement('a');
+            link.download = 'image.png'; // Name of the downloaded file
+            link.href = imgData;
+
+            // Append the link to the body
+            document.body.appendChild(link);
+
+            // Simulate click on the link
+            link.click();
+        });
+
+        function convertToArabic(englishLetter) {
+            var arabicLetters = {
+                                    'a': 'ا',
+                                    'b': 'ب',
+                                    'c': 'ج',
+                                    'd': 'د',
+                                    'e': 'ه',
+                                    'f': 'ف',
+                                    'g': 'غ',
+                                    'h': 'ح',
+                                    'i': 'ع',
+                                    'j': 'خ',
+                                    'k': 'ك',
+                                    'l': 'ل',
+                                    'm': 'م',
+                                    'n': 'ن',
+                                    'o': 'و',
+                                    'p': 'ي',
+                                    'q': 'ق',
+                                    'r': 'ر',
+                                    's': 'ص',
+                                    't': 'ط',
+                                    'u': 'ز',
+                                    'v': 'ظ',
+                                    'w': 'ض',
+                                    'x': 'س',
+                                    'y': 'ش',
+                                    'z': 'ز'
+                                };
+            let result = '';
+            for (let i = 0; i < englishLetter.length; i++) {
+                var letter = englishLetter[i];
+                if (!isLowerCase(letter)) {
+                    letter = letter.toLowerCase();
+                }
+                result += arabicLetters[letter] + " ";
+            }
+            return result;
+        }
+
+        function convertSpace(str) {
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                result += str[i] + " ";
+            }
+            return result;
+        }
+
+        function isLowerCase(char) {
+            return char === char.toLowerCase();
+        }
+    
+        console.log(convertToArabic('HELLO'));
+
+        function arabicToEasternArabic(num) {
+            const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            return num.toString().split('').map(digit => arabicNumerals[digit]).join(' ');
+        }
+
+        console.log(arabicToEasternArabic(123));
+        onload = init;
+</script>
+</body>
+</html>
