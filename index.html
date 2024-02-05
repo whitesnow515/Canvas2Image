@@ -52,7 +52,7 @@
             <form id="carPlateForm" style="width: 50%; margin-top: 20%; margin-left: 35%;">
               <div class="mb-3 mt-3">
                 <label for="Number">Number:</label>
-                <input type="number" class="form-control" id="plateLetter1" placeholder="Number" maxlength="3" name="plateLetter1" style="width: 80%;">
+                <input type="number" class="form-control" id="plateLetter1" placeholder="Number" max="9999" min="0" name="plateLetter1" style="width: 80%;">
               </div>
               <div class="mb-3">
                 <label for="Letter">Letter:</label>
@@ -88,7 +88,7 @@
   
         <!-- Modal footer -->
         <div class="modal-footer">
-          <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-info" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-danger" data-bs-dismiss="modal" onclick="download()">Download</button>
         </div>
   
@@ -250,7 +250,6 @@
 
     /**
      * create bitmap image
-     * 按照规则生成图片响应头和响应体
      */
     const genBitmapImage = function (oData) {
         //
@@ -563,19 +562,19 @@
             offscreenCanvas.width = canvas.width;
             offscreenCanvas.height = canvas.height;
             var offscreenCtx = offscreenCanvas.getContext('2d');
-            offscreenCtx.font = '65px Arial';
+            offscreenCtx.font = 'bold 65px Arial';
             offscreenCtx.fillText(arabicLetter1, 0, 30);
 
             // Measure the width of the rendered Arabic text
-            var arabicWidth = offscreenCtx.measureText(arabicLetter1).width;
+            // var arabicWidth = offscreenCtx.measureText(arabicLetter1).width;
 
-            // Adjust the font size of the Arabic text until it matches the width of the English text
-            while (arabicWidth > ctx.measureText(arabicLetter1).width) {
-                offscreenCtx.font = parseInt(offscreenCtx.font) - 1 + 'px Arial';
-                offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-                offscreenCtx.fillText(arabicLetter1, 0, 30);
-                arabicWidth = offscreenCtx.measureText(arabicLetter1).width;
-            }
+            // // Adjust the font size of the Arabic text until it matches the width of the English text
+            // while (arabicWidth > ctx.measureText(arabicLetter1).width) {
+            //     offscreenCtx.font = parseInt(offscreenCtx.font) - 1 + 'px Arial';
+            //     offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            //     offscreenCtx.fillText(arabicLetter1, 0, 30);
+            //     arabicWidth = offscreenCtx.measureText(arabicLetter1).width;
+            // }
 
             // Now you can draw the Arabic text onto the visible canvas
             ctx.font = offscreenCtx.font;
@@ -587,23 +586,23 @@
             offscreenCanvas.width = canvas.width;
             offscreenCanvas.height = canvas.height;
             var offscreenCtx = offscreenCanvas.getContext('2d');
-            offscreenCtx.font = '65px Arial';
-            offscreenCtx.fillText(arabicLetter3, 0, 30);
+            offscreenCtx.font = 'bold 50px Arial';
+            offscreenCtx.fillText(arabicLetter4, 0, 30);
 
-            var arabicWidth = offscreenCtx.measureText(arabicLetter2).width;
+            // var arabicWidth = offscreenCtx.measureText(arabicLetter2).width;
 
-            // Adjust the font size of the Arabic text until it matches the width of the English text
-            while (arabicWidth > ctx.measureText(arabicLetter3).width) {
-                offscreenCtx.font = parseInt(offscreenCtx.font) - 1 + 'px Arial';
-                offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-                offscreenCtx.fillText(arabicLetter2, 0, 30);
-                arabicWidth = offscreenCtx.measureText(arabicLetter2).width;
-            }
+            // // Adjust the font size of the Arabic text until it matches the width of the English text
+            // while (arabicWidth > ctx.measureText(arabicLetter3).width) {
+            //     offscreenCtx.font = parseInt(offscreenCtx.font) - 1 + 'px Arial';
+            //     offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            //     offscreenCtx.fillText(arabicLetter2, 0, 30);
+            //     arabicWidth = offscreenCtx.measureText(arabicLetter2).width;
+            // }
 
             // Now you can draw the Arabic text onto the visible canvas
             ctx.font = offscreenCtx.font;
             console.log(ctx.font);
-            ctx.fillText(arabicLetter4, boxWidth * 0.62, boxHeight * 0.32);
+            ctx.fillText(arabicLetter4, boxWidth * 0.62, boxHeight * 0.31);
 
             ctx.fillText(arabicLetter1, boxWidth / 4, boxHeight * 0.5);
 
@@ -657,34 +656,50 @@
             });
 
         function convertToArabic(englishLetter) {
+
+            console.log("1st : " + englishLetter);
+
             var arabicLetters = {
-                                    'a': 'ا',
-                                    'b': 'ب',
-                                    'h': 'ح',
-                                    'd': 'د',
-                                    'r': 'ر',
-                                    's': 'س',
-                                    'x': 'ص',
-                                    't': 'ط',
-                                    'e': 'ع',
-                                    'g': 'ق',
-                                    'k': 'ك',
-                                    'l': 'ل',
-                                    'z': 'م',
-                                    'n': 'ن',
-                                    'h': 'هـ',
-                                    'u': 'و',
-                                    'v': 'ى'
-                                };
-            let result = '';
+                'a': 'ا',
+                'b': 'ب',
+                'h': 'ح',
+                'j': 'ح',
+                'd': 'د',
+                'r': 'ر',
+                's': 'س',
+                'x': 'ص',
+                't': 'ط',
+                'e': 'ع',
+                'g': 'ق',
+                'k': 'ك',
+                'l': 'ل',
+                'z': 'م',
+                'n': 'ن',
+                'h': 'هـ',
+                'u': 'و',
+                'v': 'ى'
+            };
+            // let result = '', result1 = '';
+            var result = '';
             for (let i = 0; i < englishLetter.length; i++) {
                 var letter = englishLetter[i];
                 if (!isLowerCase(letter)) {
                     letter = letter.toLowerCase();
                 }
-                result += arabicLetters[letter] + " ";
+                console.log("eng: " + i + " : " + letter);
+                result = result +arabicLetters[letter];
+                console.log("arabic: " + i + " : " + arabicLetters[letter]);
             }
-            return result;
+
+            var result1 = '';
+            for (let i = result.length - 1; i >= 0 ; i--) {
+                result1 += result[i] + " ";
+            }
+
+            console.log("res:" + result);
+            // console.log(result1);
+
+            return result1;
         }
 
         function download() {
@@ -704,7 +719,7 @@
         function convertSpace(str) {
             let result = '';
             for (let i = 0; i < str.length; i++) {
-                result += str[i] + " ";
+                result += str[i] + "  ";
             }
             return result;
         }
@@ -712,15 +727,17 @@
         function isLowerCase(char) {
             return char === char.toLowerCase();
         }
-    
-        console.log(convertToArabic('HELLO'));
 
         function arabicToEasternArabic(num) {
             const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-            return num.toString().split('').map(digit => arabicNumerals[digit]).join(' ');
+            var words = num.toString().split('').map(digit => arabicNumerals[digit]).join('');
+            var letter = '';
+            for (let i = words.length - 1; i >= 0; i--) {
+                letter += words[i] + " ";
+            }
+            return letter;
         }
 
-        console.log(arabicToEasternArabic(123));
         onload = init;
 </script>
 </body>
