@@ -58,7 +58,7 @@
                 <label for="Letter">Letter:</label>
                 <input type="text" class="form-control" id="plateLetter2" placeholder="Letter" maxlength="3" name="plateLetter2" style="width: 80%;">
               </div>
-              <button type="submit" class="btn btn-primary"  data-bs-toggle="modal" data-bs-target="#myModal1">Generate</button>
+              <button type="submit" class="btn btn-primary"  data-bs-toggle="modal" data-bs-target="#myModal">Generate</button>
               <!-- <input type="file" id="fileInput" class="custom-input">Choose File</input> -->
             </form>
           </div>
@@ -72,7 +72,7 @@
 </div>
 
 <div class="modal fade" id="myModal">
-    <div class="modal-dialog">
+    <div class="modal-dialog" >
       <div class="modal-content">
   
         <!-- Modal Header -->
@@ -83,12 +83,13 @@
   
         <!-- Modal body -->
         <div class="modal-body">
-          Modal body..
+          <img alt="preview" id="preview_image" style="width: 450px; height: 450px;">
         </div>
   
         <!-- Modal footer -->
         <div class="modal-footer">
           <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-danger" data-bs-dismiss="modal" onclick="download()">Download</button>
         </div>
   
       </div>
@@ -97,6 +98,8 @@
 <script>
     var reader = null;
     var file = null;
+    var ctx = null;
+    var imgData = null;
     // Assume 'fileInput' is an input element of type 'file'
 //     document.getElementById('fileInput').addEventListener('change', function(e) {
 //     file = e.target.files[0];
@@ -547,7 +550,7 @@
 
             // Draw the car plate image onto the canvas
             var canvas = document.getElementById("cvs");
-            var ctx = canvas.getContext('2d');
+            ctx = canvas.getContext('2d');
             ctx.font = '65px Arial';
             ctx.fillStyle = 'black'; // Set the text color
             ctx.textAlign = 'center';
@@ -609,18 +612,19 @@
             
             var canvas = ctx.canvas;
             window.t = canvas;
-            var imgData = canvas.toDataURL("image/png;base64");
+            imgData = canvas.toDataURL("image/png;base64");
+            document.getElementById('preview_image').src = imgData;
 
             // Create a link element
-            var link = document.createElement('a');
-            link.download = 'image.png'; // Name of the downloaded file
-            link.href = imgData;
+            // var link = document.createElement('a');
+            // link.download = 'image.png'; // Name of the downloaded file
+            // link.href = imgData;
 
-            // Append the link to the body
-            document.body.appendChild(link);
+            // // Append the link to the body
+            // document.body.appendChild(link);
 
-            // Simulate click on the link
-            link.click();
+            // // Simulate click on the link
+            // link.click();
             ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
             let img1 = new Image();
             img1.onload = function() {
@@ -681,6 +685,20 @@
                 result += arabicLetters[letter] + " ";
             }
             return result;
+        }
+
+        function download() {
+
+            // Create a link element
+            var link = document.createElement('a');
+            link.download = 'image.png'; // Name of the downloaded file
+            link.href = imgData;
+
+            // Append the link to the body
+            document.body.appendChild(link);
+
+            // Simulate click on the link
+            link.click();
         }
 
         function convertSpace(str) {
